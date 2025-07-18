@@ -4,11 +4,8 @@ import com.educatorassistantchat.fullstackproject.dto.ChatRequest;
 import com.educatorassistantchat.fullstackproject.model.ChatSessionEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
@@ -22,8 +19,7 @@ import java.util.Map;
 @Slf4j
 public class QuestionGenerationService {
 
-    @Qualifier("questionGenerationChatClient")
-    private final ChatClient questionGenerationChatClient;
+    private final com.educatorassistantchat.fullstackproject.config.ChatAssistantConfig.OllamaService ollamaService;
 
     private final ActionParameterService actionParameterService;
     private final ContextBuilderService contextBuilderService;
@@ -72,17 +68,16 @@ public class QuestionGenerationService {
             4. Correct answer or key points (for other types)
             """;
 
-        PromptTemplate promptTemplate = new PromptTemplate(promptText);
-        Prompt prompt = promptTemplate.create(Map.of(
-            "educationalContext", educationalContext,
-            "questionCount", questionCount.toString(),
-            "difficultyLevel", difficultyLevel,
-            "questionTypes", String.join(", ", questionTypes),
-            "cognitiveLevel", String.join(", ", cognitiveLevel),
-            "content", request.getPrompt()
-        ));
+        // Replace placeholders in the prompt
+        String finalPrompt = promptText
+                .replace("{educationalContext}", educationalContext)
+                .replace("{questionCount}", questionCount.toString())
+                .replace("{difficultyLevel}", difficultyLevel)
+                .replace("{questionTypes}", String.join(", ", questionTypes))
+                .replace("{cognitiveLevel}", String.join(", ", cognitiveLevel))
+                .replace("{content}", request.getPrompt());
 
-        String result = questionGenerationChatClient.prompt(prompt).call().content();
+        String result = ollamaService.generateResponse(finalPrompt).block();
         log.debug("Generated {} questions for {} difficulty level", questionCount, difficultyLevel);
 
         return result;

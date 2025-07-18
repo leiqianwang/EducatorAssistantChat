@@ -7,8 +7,6 @@ import com.educatorassistantchat.fullstackproject.model.ChatMessageEntity;
 import com.educatorassistantchat.fullstackproject.model.ChatSessionEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +22,7 @@ import java.util.List;
 @Slf4j
 public class ChatOrchestrationService {
 
-    @Qualifier("generalChatClient")
-    private final ChatClient generalChatClient;
+    private final com.educatorassistantchat.fullstackproject.config.ChatAssistantConfig.OllamaService ollamaService;
 
     private final SessionManagementService sessionManagementService;
     private final MessagePersistenceService messagePersistenceService;
@@ -137,10 +134,7 @@ public class ChatOrchestrationService {
     private String handleRegularChatRequest(ChatRequest request, ChatSessionEntity session) {
         String contextualMessage = contextBuilderService.buildContextualMessage(request, session);
 
-        return generalChatClient.prompt()
-            .user(contextualMessage)
-            .call()
-            .content();
+        return ollamaService.generateResponse(contextualMessage).block();
     }
 
     /**

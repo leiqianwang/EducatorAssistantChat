@@ -4,11 +4,8 @@ import com.educatorassistantchat.fullstackproject.dto.ChatRequest;
 import com.educatorassistantchat.fullstackproject.model.ChatSessionEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
@@ -21,8 +18,7 @@ import java.util.Map;
 @Slf4j
 public class TranslationService {
 
-    @Qualifier("translationChatClient")
-    private final ChatClient translationChatClient;
+    private final com.educatorassistantchat.fullstackproject.config.ChatAssistantConfig.OllamaService ollamaService;
 
     private final ActionParameterService actionParameterService;
     private final ContextBuilderService contextBuilderService;
@@ -61,16 +57,15 @@ public class TranslationService {
             Important: Provide only the translation without explanations unless specifically requested.
             """;
 
-        PromptTemplate promptTemplate = new PromptTemplate(promptText);
-        Prompt prompt = promptTemplate.create(Map.of(
-            "educationalContext", educationalContext,
-            "originalLanguage", originalLanguage,
-            "targetLanguage", targetLanguage,
-            "tone", tone,
-            "content", request.getPrompt()
-        ));
+        // Replace placeholders in the prompt
+        String finalPrompt = promptText
+                .replace("{educationalContext}", educationalContext)
+                .replace("{originalLanguage}", originalLanguage)
+                .replace("{targetLanguage}", targetLanguage)
+                .replace("{tone}", tone)
+                .replace("{content}", request.getPrompt());
 
-        String result = translationChatClient.prompt(prompt).call().content();
+        String result = ollamaService.generateResponse(finalPrompt).block();
         log.debug("Translation completed: {} -> {} ({} characters)",
                  originalLanguage, targetLanguage, result.length());
 

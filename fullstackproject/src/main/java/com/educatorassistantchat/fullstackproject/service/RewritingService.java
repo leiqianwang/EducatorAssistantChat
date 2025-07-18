@@ -4,11 +4,8 @@ import com.educatorassistantchat.fullstackproject.dto.ChatRequest;
 import com.educatorassistantchat.fullstackproject.model.ChatSessionEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
@@ -20,8 +17,7 @@ import java.util.Map;
 @Slf4j
 public class RewritingService {
 
-    @Qualifier("rewritingChatClient")
-    private final ChatClient rewritingChatClient;
+    private final com.educatorassistantchat.fullstackproject.config.ChatAssistantConfig.OllamaService ollamaService;
 
     private final ActionParameterService actionParameterService;
     private final ContextBuilderService contextBuilderService;
@@ -54,16 +50,15 @@ public class RewritingService {
             Content to rewrite: {content}
             """;
 
-        PromptTemplate promptTemplate = new PromptTemplate(promptText);
-        Prompt prompt = promptTemplate.create(Map.of(
-            "educationalContext", educationalContext,
-            "targetAudience", targetAudience.replace("_", " "),
-            "tone", tone,
-            "purpose", purpose.replace("_", " "),
-            "content", request.getPrompt()
-        ));
+        // Replace placeholders in the prompt
+        String finalPrompt = promptText
+                .replace("{educationalContext}", educationalContext)
+                .replace("{targetAudience}", targetAudience.replace("_", " "))
+                .replace("{tone}", tone)
+                .replace("{purpose}", purpose.replace("_", " "))
+                .replace("{content}", request.getPrompt());
 
-        return rewritingChatClient.prompt(prompt).call().content();
+        return ollamaService.generateResponse(finalPrompt).block();
     }
 
     private String buildEducationalContext(ChatRequest request, ChatSessionEntity session) {
